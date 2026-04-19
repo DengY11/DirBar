@@ -11,6 +11,8 @@
 
 const int max_dir_holds = 114;
 
+size_t top_num = 0;
+
 typedef struct{
     char *fpath;
     struct stat sb;
@@ -81,19 +83,16 @@ void print_chart(const file_array *files){
     const int path_width = 30;
     const int max_bar_width = 31;
     off_t max_size = 1;
-
     if(files->p == 0){
         return;
     }
-
     if(files->file[0].sb.st_size > 0){
         max_size = files->file[0].sb.st_size;
     }
-
-    for(size_t i = 0; i < files->p; ++i){
+    size_t last_num = top_num == 0? files->p: top_num;
+    for(size_t i = 0; i < last_num; ++i){
         char size_buffer[32];
         int bar_len = 0;
-
         format_size(files->file[i].sb.st_size, size_buffer, sizeof(size_buffer));
         if(files->file[i].sb.st_size > 0){
             bar_len = (int)((files->file[i].sb.st_size * max_bar_width) / max_size);
@@ -101,7 +100,6 @@ void print_chart(const file_array *files){
                 bar_len = 1;
             }
         }
-
         printf("%-*s %8s  ", path_width, files->file[i].fpath, size_buffer);
         for(int j = 0; j < bar_len; ++j){
             putchar('#');
@@ -130,11 +128,14 @@ int ftw_callback(const char *fpath, const struct stat *sb, int typeflag) {
 }
 
 int main(int argc, char **argv) {
-    if(argc != 2){
-        printf("usage: %s [path]\n", argv[0]);
+    if(argc > 3 || argc == 1){
+        printf("usage: %s [path] [number]\n", argv[0]);
         return 0;
     }
     const char *path = argv[1];
+    if(argc == 3){
+        top_num = atoi(argv[2]);            
+    }
     init_file_array(&f_arr);
     if(ftw(path, ftw_callback, max_dir_holds) != 0){
         perror("ftw");
@@ -142,9 +143,7 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
     qsort(f_arr.file, f_arr.p, sizeof(file_t), cmp_file_size);
-
     print_chart(&f_arr);
-
     for(size_t i = 0; i < f_arr.p; ++i){
         free(f_arr.file[i].fpath);
     }
